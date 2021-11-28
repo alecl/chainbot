@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "base64-sol/base64.sol";
 
 //contract ChainBotNFT is ERC721URIStorage, Ownable {
-contract ChainBotNFT is ERC721, Ownable {
+contract ChainBotNFT is ERC721URIStorage, Ownable {
     struct BotInfo {
         address creator;
         string name;
@@ -53,7 +53,7 @@ contract ChainBotNFT is ERC721, Ownable {
     constructor() ERC721("ChainBot NFT", "ChainBotNFT") {
         tokenCounter = 0;
 
-        authUri = "https://www.botsandai.com/auth";
+        authUri = "http://localhost:3000/auth";
     }
 
     function safeTransferFrom(
@@ -177,6 +177,8 @@ contract ChainBotNFT is ERC721, Ownable {
     {
         uint256 tokenId = tokenCounter;
         _safeMint(msg.sender, tokenId);
+        // For demo purposes set a pinned IPFS URI
+        _setTokenURI(tokenId, 'https://gateway.pinata.cloud/ipfs/QmbbVwNkaqCaE11advRnzDKVB5jrZmSsjTUaUzxP4qTGQk');
 
         bots.push(BotInfo(msg.sender, name, messageUri, block.timestamp));
 

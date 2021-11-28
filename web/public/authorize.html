@@ -2,19 +2,24 @@
 <html>
   <head>
     <title>Metamask Sign to Login</title>
-    <link rel="stylesheet" href="./assets/css/styles.css">
+    <link rel="stylesheet" href="./assets/css/styles.css" />
     <meta charset="UTF-8" />
   </head>
   <body>
     <h1>Metamask Sign to Login</h1>
     <div id="target"></div>
     <button id="sign">Sign in with Metamask</button>
-    <br/>
+    <br />
     <script
       type="text/javascript"
       src="./assets/js/querystring-util.js"
     ></script>
     <script type="text/javascript" src="./assets/js/web3-1.6.0.min.js"></script>
+    <script
+      type="text/javascript"
+      src="./assets/js/jquery-3.6.0.min.js"
+    ></script>
+    <script type="text/javascript" src="./assets/js/contract.js"></script>
     <script type="text/javascript">
       window.addEventListener("load", async () => {
         // Modern
@@ -60,15 +65,6 @@
           document.getElementById("target").innerText = str;
         }
 
-        var query = parseQueryString(
-          window.location.search + window.location.hash
-        );
-
-        // Detect our own errors
-        if (query.error) {
-          return updateScreen(query.error_description || query.error);
-        }
-
         function error(err, desc) {
           updateScreen(desc || err);
         }
@@ -110,36 +106,77 @@
               );
             }
 
-            chainBotContractAddress = "0xa14C97C4F1CC15Df10cc02C550c7f39Cf8c5EC38";
-            chainBotTargetNFT = "0";
-            authorizationTarget = chainBotContractAddress + "_" + chainBotTargetNFT;
+            // TODO: use the ABI JSON to get getAuthUri of this contract and message url
+            // of our token and then send sig there
 
-            personal_sign(
-              authorizationTarget,
-              accounts[0],
-              function (err, sighex) {
-                if (err) {
-                  return error("access_denied", err.message || err);
+            chainBotContractAddress =
+              "0x6eaC2fb47316dAE61b0ce5F88c3CB284eb6f2bff";
+            chainBotTargetNFT = "0";
+
+            var tokenContract = new window.web3.eth.Contract(
+              getContractAbi(),
+              chainBotContractAddress
+            );
+
+            $.when(
+              tokenContract.methods.getAuthUri().call(),
+              tokenContract.methods.getBotInfo("0").call(),
+              tokenContract.methods.tokenURI("0").call()
+            )
+              .done(function (auth_result, botInfo_result, tokenURI_result) {
+                var botName = result["1"];
+                var botMessageUrl = result["2"];
+                var botFreezeExpiry = result["3"];
+                const currentUnixTime = Math.floor(Date.now() / 1000);
+                if (botFreezeExpiry > currentUnixTime) {
+                  console.log("bot NFT properties frozen");
                 }
 
-                var sig = toBase64url(fromHex(sighex.substr(2, 128)));
-                var xhttp = new XMLHttpRequest();
+                authorizationTarget =
+                  chainBotContractAddress +
+                  "_" +
+                  chainBotTargetNFT +
+                  "_" +
+                  botName +
+                  "_" +
+                  botMessageUrl;
 
-                xhttp.onreadystatechange = function () {
-                  if (this.readyState == 4 && this.status == 200) {
-                    // This is for demo purposes only and not secure to pass a token on querystring
-                    window.location = "chat.html?accessToken=" + escape(JSON.parse(this.responseText).accessToken);
+                personal_sign(
+                  authorizationTarget,
+                  accounts[0],
+                  function (err, sighex) {
+                    if (err) {
+                      return error("access_denied", err.message || err);
+                    }
+
+                    var sig = toBase64url(fromHex(sighex.substr(2, 128)));
+
+                    var settings = {
+                      url:
+                        auth_result + "?sig=" +
+                        escape(sighex) +
+                        "&authorizationTarget=" +
+                        escape(authorizationTarget),
+                      method: "GET",
+                      timeout: 0,
+                    };
+
+                    $.ajax(settings)
+                      .done(function (response) {
+                        // This is for demo purposes only and not secure to pass a token on querystring
+                        window.location =
+                          "chat.html?accessToken=" +
+                          escape(response.accessToken);
+                      })
+                      .fail((err) => {
+                        console.log("Failed auth", err);
+                      });
                   }
-                };
-                xhttp.open(
-                  "GET",
-                  "http://localhost:3000/auth?sig=" +
-                    escape(sighex) + "&authorizationTarget=" + escape(authorizationTarget),
-                  true
                 );
-                xhttp.send();
-              }
-            );
+              })
+              .fail(function (err) {
+                console.log("Failed web3 reads", err);
+              });
           });
         }
 

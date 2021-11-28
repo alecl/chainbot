@@ -14,13 +14,17 @@ require("dotenv").config();
 const app = express();
 const port = 3000;
 
-app.use(express.static("public"));
+var staticOptions = {
+  index: "authorize.html",
+};
 
-app.use(
-  cors({
-    origin: "https://todo.xyz",
-  })
-);
+app.use(express.static("public", staticOptions));
+
+// app.use(
+//   cors({
+//     origin: "*",
+//   })
+// );
 
 app.use(express.text());
 app.use(express.json());

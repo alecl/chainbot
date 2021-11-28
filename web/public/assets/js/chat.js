@@ -60,6 +60,9 @@
       var query = parseQueryString(
         window.location.search + window.location.hash
       );
+
+      // TODO parse JWT and pull out name and messageUri
+
       var settings = {
         url: "/chat",
         method: "POST",
