@@ -1,0 +1,42 @@
+{
+  "name": "chainbot",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.7",
+    "@nomiclabs/hardhat-solhint": "2.0.0",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "chai": "^4.3.4",
+    "chai-bignumber": "^3.0.0",
+    "chai-bn": "^0.3.0",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.5.1",
+    "hardhat": "^2.6.8",
+    "hardhat-deploy": "^0.9.4",
+    "luxon": "2.1.0",
+    "web3": "^1.6.0"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.2.2",
+    "@chainlink/test-helpers": "0.0.6",
+    "@chainlink/token": "^1.1.0",
+    "@nomiclabs/hardhat-truffle5": "^2.0.2",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@openzeppelin/contracts": "^4.3.2",
+    "babel-eslint": "^10.1.0",
+    "base64-sol": "^1.1.0",
+    "dotenv": "^10.0.0",
+    "eslint": "^8.2.0",
+    "mocha-skip-if": "^0.0.3",
+    "transform": "^1.1.2"
+  },
+  "mocha": {
+    "timeout": 10000000
+  }
+}

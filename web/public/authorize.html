@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Metamask Sign to Login</title>
+    <link rel="stylesheet" href="./assets/css/styles.css">
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <h1>Metamask Sign to Login</h1>
+    <div id="target"></div>
+    <button id="sign">Sign in with Metamask</button>
+    <br/>
+    <script
+      type="text/javascript"
+      src="./assets/js/querystring-util.js"
+    ></script>
+    <script type="text/javascript" src="./assets/js/web3-1.6.0.min.js"></script>
+    <script type="text/javascript">
+      window.addEventListener("load", async () => {
+        // Modern
+        if (window.ethereum) {
+          window.web3 = new Web3(window.ethereum);
+        }
+        // Legacy
+        else if (window.web3) {
+          window.web3 = new Web3(web3.currentProvider);
+        }
+        // Non-dapp
+        else {
+          console.log("No web3 provider. Please install MetaMask!");
+        }
+      });
+
+      function startApp() {
+        function web3call(str, callback, ...params) {
+          return window.web3.currentProvider.sendAsync(
+            {
+              method: str,
+              params: params,
+            },
+            function (err, result) {
+              if (err) return callback(err);
+              if (result.error) {
+                return callback(result.error);
+              }
+              return callback(null, result.result);
+            }
+          );
+        }
+
+        function eth_accounts(callback) {
+          return web3call("eth_accounts", callback);
+        }
+
+        function personal_sign(str, from, callback) {
+          return web3call("personal_sign", callback, from, str);
+        }
+
+        function updateScreen(str) {
+          document.getElementById("target").innerText = str;
+        }
+
+        var query = parseQueryString(
+          window.location.search + window.location.hash
+        );
+
+        // Detect our own errors
+        if (query.error) {
+          return updateScreen(query.error_description || query.error);
+        }
+
+        function error(err, desc) {
+          updateScreen(desc || err);
+        }
+
+        updateScreen(window.location.host + " requests authorization.");
+
+        function fromHex(hex) {
+          return hex
+            .match(/\w{2}/g)
+            .map(function (a) {
+              return String.fromCharCode(parseInt(a, 16));
+            })
+            .join("");
+        }
+
+        function toHex(str) {
+          var x = "";
+          for (var i = 0; i < str.length; i++)
+            x += ("0" + str.charCodeAt(i).toString(16)).slice(-2);
+          return x;
+        }
+
+        function toBase64url(bytes) {
+          return btoa(bytes)
+            .replace(/=*$/, "")
+            .replace(/\//g, "_")
+            .replace(/\+/g, "-");
+        }
+
+        function sign(e) {
+          eth_accounts(function (err, accounts) {
+            if (err) {
+              return updateScreen(err.message || err);
+            }
+
+            if (!accounts || accounts.length === 0) {
+              return updateScreen(
+                "No accounts found; please login to Metamask first"
+              );
+            }
+
+            chainBotContractAddress = "0xa14C97C4F1CC15Df10cc02C550c7f39Cf8c5EC38";
+            chainBotTargetNFT = "0";
+            authorizationTarget = chainBotContractAddress + "_" + chainBotTargetNFT;
+
+            personal_sign(
+              authorizationTarget,
+              accounts[0],
+              function (err, sighex) {
+                if (err) {
+                  return error("access_denied", err.message || err);
+                }
+
+                var sig = toBase64url(fromHex(sighex.substr(2, 128)));
+                var xhttp = new XMLHttpRequest();
+
+                xhttp.onreadystatechange = function () {
+                  if (this.readyState == 4 && this.status == 200) {
+                    // This is for demo purposes only and not secure to pass a token on querystring
+                    window.location = "chat.html?accessToken=" + escape(JSON.parse(this.responseText).accessToken);
+                  }
+                };
+                xhttp.open(
+                  "GET",
+                  "http://localhost:3000/auth?sig=" +
+                    escape(sighex) + "&authorizationTarget=" + escape(authorizationTarget),
+                  true
+                );
+                xhttp.send();
+              }
+            );
+          });
+        }
+
+        document.getElementById("sign").addEventListener("click", sign);
+      }
+
+      window.addEventListener("load", startApp);
+    </script>
+  </body>
+</html>
