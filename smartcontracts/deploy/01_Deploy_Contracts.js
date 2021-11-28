@@ -27,42 +27,35 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   log(
     `Verify with:\n npx hardhat verify --network ${networkName} ${ChainBotNFT.address}`
   );
-  log("Let's create an NFT now!");
-  /*
-  let filepath = "./img/small_enough.svg";
-  let svg = fs.readFileSync(filepath, { encoding: "utf8" });
-  log(
-    `We will use ${filepath} as our SVG, and this will turn into a tokenURI. `
-  );*/
-  tx = await chainBotNFT.create("Bot1", "https://www.botsandai.com/");
+  log("Creating NFT");
+
+  tx = await chainBotNFT.create("DemoBot", "http://localhost:3000/chat");
   await tx.wait(1);
 
   var d1 = DateTime.now();
   var d2 = Math.floor(d1.plus({ days: 7 }).toSeconds());
 
-  tx2 = await chainBotNFT.freeze(0, d2)
+  tx2 = await chainBotNFT.freeze(0, d2);
 
   tx3 = await chainBotNFT.callStatic.getAuthUri();
   console.log(tx3);
 
-  tx4 = await chainBotNFT.setAuthUri("http://versetech.ai/auth");
+  tx4 = await chainBotNFT.callStatic.getBotInfo(0);
+  console.log(tx4);
+
+  // will fail due to freeze. uncomment to prove.
+  // await chainBotNFT.updateBotName(0, 'MyBot');
 
   tx5 = await chainBotNFT.callStatic.getBotInfo(0);
   console.log(tx5);
 
-  //await chainBotNFT.updateBotName(0, 'MyBot');
-  //await chainBotNFT.updateBotMessageUri(0, "https://www.com");
-
-  tx6 = await chainBotNFT.callStatic.getBotInfo(0);
-  console.log(tx6); 
-
-  //await chainBotNFT.updateBotInfo(0, "MyBot2", "https://www.comz");
+  // will fail due to freeze. uncomment to prove.
+  // await chainBotNFT.updateBotInfo(0, "MyBot2", "https://www.comz");
 
   tx7 = await chainBotNFT.callStatic.getBotInfo(0);
-  console.log(tx7); 
+  console.log(tx7);
 
-  log(`You've made your first NFT!`);
-  //log(`You can view the tokenURI here ${await ChainBotNFT.tokenURI(0)}`);
+  log(`NFT deployed`);
 };
 
 module.exports.tags = ["all", "nft"];
