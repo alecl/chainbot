@@ -61,16 +61,14 @@
         window.location.search + window.location.hash
       );
 
-      // TODO parse JWT and pull out name and messageUri
-
       var settings = {
-        url: "/chat",
+        url: window.chatMessageUrl,
         method: "POST",
         data: messageToSend,
         dataType: "text",
         timeout: 0,
         headers: {
-          Authorization: "Bearer " + query["accessToken"],
+          Authorization: "Bearer " + window.accessToken,
           "Content-Type": "text/plain"
         },
       };

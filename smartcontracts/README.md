@@ -1,0 +1,1 @@
+An extension to ERC721 NFT standard to allow for chatbot specific properties and freezing values to protect them from being changed or disconnected from a bot during NFT resale.

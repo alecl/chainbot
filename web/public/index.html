@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Metamask Sign to Login</title>
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/chat.css"></link>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <h1>Metamask Sign to Login</h1>
+    <div id="target"></div><br/>
+    <label for="txtContractAddress">Contract Address: </label><input type="text" id="txtContractAddress" name="txtContractAddress" size="43" maxlength="42" value="0x4c66135f8A7bBd6C3f9ae8642c93f66359cEE483"></input><br/>
+    <label for="txtChainbotNFTTokenId">Chainbot NFT Token Id: </label><input type="number" id="txtChainbotNFTTokenId" name="txtChainbotNFTTokenId" size="11" maxlength="10" value="0"></input><br/><br/>
+    <button id="sign">Sign in with Metamask</button><br/>
+    <div id="frozenstate"></div>
+    <div id="ipfs"></div>
+    <br /><br />
+    <script
+      type="text/javascript"
+      src="./assets/js/querystring-util.js"
+    ></script>
+    <script type="text/javascript" src="./assets/js/web3-1.6.0.min.js"></script>
+    <script type="text/javascript" src="./assets/js/handlebars-4.7.7.min.js"></script>
+    <script
+      type="text/javascript"
+      src="./assets/js/jquery-3.6.0.min.js"
+    ></script>
+    <script type="text/javascript" src="./assets/js/contract.js"></script>
+    <script type="text/javascript">
+      window.addEventListener("load", async () => {
+        // Modern
+        if (window.ethereum) {
+          window.web3 = new Web3(window.ethereum);
+        }
+        // Legacy
+        else if (window.web3) {
+          window.web3 = new Web3(web3.currentProvider);
+        }
+        // Non-dapp
+        else {
+          console.log("No web3 provider. Please install MetaMask!");
+        }
+      });
+
+      function startApp() {
+        function web3call(str, callback, ...params) {
+          return window.web3.currentProvider.sendAsync(
+            {
+              method: str,
+              params: params,
+            },
+            function (err, result) {
+              if (err) return callback(err);
+              if (result.error) {
+                return callback(result.error);
+              }
+              return callback(null, result.result);
+            }
+          );
+        }
+
+        function eth_accounts(callback) {
+          return web3call("eth_accounts", callback);
+        }
+
+        function personal_sign(str, from, callback) {
+          return web3call("personal_sign", callback, from, str);
+        }
+
+        function updateScreen(str) {
+          document.getElementById("target").innerText = str;
+        }
+
+        function error(err, desc) {
+          updateScreen(desc || err);
+        }
+
+        updateScreen(window.location.host + " requests authorization.");
+
+        function fromHex(hex) {
+          return hex
+            .match(/\w{2}/g)
+            .map(function (a) {
+              return String.fromCharCode(parseInt(a, 16));
+            })
+            .join("");
+        }
+
+        function toHex(str) {
+          var x = "";
+          for (var i = 0; i < str.length; i++)
+            x += ("0" + str.charCodeAt(i).toString(16)).slice(-2);
+          return x;
+        }
+
+        function toBase64url(bytes) {
+          return btoa(bytes)
+            .replace(/=*$/, "")
+            .replace(/\//g, "_")
+            .replace(/\+/g, "-");
+        }
+
+        function sign(e) {
+          eth_accounts(function (err, accounts) {
+            if (err) {
+              return updateScreen(err.message || err);
+            }
+
+            if (!accounts || accounts.length === 0) {
+              return updateScreen(
+                "No accounts found; please login to Metamask first"
+              );
+            }
+
+            chainBotContractAddress = $( "input#txtContractAddress" ).val();
+            chainBotTargetNFT = $( "input#txtChainbotNFTTokenId" ).val();
+
+            var tokenContract = new window.web3.eth.Contract(
+              getContractAbi(),
+              chainBotContractAddress
+            );
+
+            $.when(
+              tokenContract.methods.getAuthUri().call(),
+              tokenContract.methods.getBotInfo(chainBotTargetNFT).call(),
+              tokenContract.methods.tokenURI(chainBotTargetNFT).call()
+            )
+              .done(function (auth_result, botInfo_result, tokenURI_result) {
+                var botName = botInfo_result["1"];
+                // For simple demo purposes only. This is NOT a secure place to put chatMessageUrl
+                window.chatMessageUrl = botInfo_result["2"]; // used in chat.js
+                var botFreezeExpiry = botInfo_result["3"];
+                const currentUnixTime = Math.floor(Date.now() / 1000);
+                if (botFreezeExpiry > currentUnixTime) {
+                  console.log("bot NFT properties frozen");
+                  $('div#frozenstate').text('❄️ bot NFT properties frozen until UTC: ' + new Date(botFreezeExpiry * 1000).toLocaleString());
+                }
+
+                // check if IPFS pin site (TODO - many more options and pin checks should be done)
+                if (tokenURI_result) {
+                  if (tokenURI_result.startsWith("https://gateway.pinata.cloud")) {
+                    $('div#ipfs').text('✅ using IPFS site');
+                  } else {
+                    $('div#ipfs').text('❕ unknown if using IPFS site');
+                  }
+                }
+
+                authorizationTarget =
+                  chainBotContractAddress +
+                  "_" +
+                  chainBotTargetNFT +
+                  "_" +
+                  botName;
+
+                personal_sign(
+                  authorizationTarget,
+                  accounts[0],
+                  function (err, sighex) {
+                    if (err) {
+                      return error("access_denied", err.message || err);
+                    }
+
+                    var sig = toBase64url(fromHex(sighex.substr(2, 128)));
+
+                    var settings = {
+                      url:
+                        auth_result + "?sig=" +
+                        escape(sighex) +
+                        "&authorizationTarget=" +
+                        escape(authorizationTarget),
+                      method: "GET",
+                      timeout: 0,
+                    };
+
+                    $.ajax(settings)
+                      .done(function (response) {
+                        $('.chatinterface').css("display", "block");
+                        $('span.message-data-name').html('<i class="fa fa-circle online"></i> ' + botName);
+                        $('div.chat-with').text('Chat with ' + botName);
+
+                        // For simple demo purposes only. This is NOT a secure place to put accessToken
+                        window.accessToken = response.accessToken;
+                      })
+                      .fail((err) => {
+                        console.log("Failed auth", err);
+                      });
+                  }
+                );
+              })
+              .fail(function (err) {
+                console.log("Failed web3 reads", err);
+              });
+          });
+        }
+
+        document.getElementById("sign").addEventListener("click", sign);
+      }
+
+      window.addEventListener("load", startApp);
+    </script>
+    <div class="chatinterface">
+  <div class="container clearfix">
+    <div class="chat">
+      <div class="chat-header clearfix">
+        <img src="./assets/img/bot-icon.png" alt="avatar" height="50" width="50"/>
+        
+        <div class="chat-about">
+          <div class="chat-with">Chat with Bot</div>
+          <div class="chat-num-messages">authorized via wallet sig</div>
+        </div>
+        <i class="fa fa-star"></i>
+      </div> <!-- end chat-header -->
+      
+      <div class="chat-history">
+        <ul>
+          <li>
+            <div class="message-data">
+              <span class="message-data-name"><i class="fa fa-circle online"></i> Bot</span>
+              <span class="message-data-time">10:31 AM, Today</span>
+            </div>
+            <i class="fa fa-circle online"></i>
+            <i class="fa fa-circle online" style="color: #AED2A6"></i>
+            <i class="fa fa-circle online" style="color:#DAE9DA"></i>
+            <div class="message my-message">
+              Hi, what is your name?
+            </div>
+          </li>
+          
+        </ul>
+        
+      </div> <!-- end chat-history -->
+      
+      <div class="chat-message clearfix">
+        <textarea name="message-to-send" id="message-to-send" placeholder ="Type your message" rows="3"></textarea>
+                
+        <i class="fa fa-file-o"></i> &nbsp;&nbsp;&nbsp;
+        <i class="fa fa-file-image-o"></i>
+        
+        <button>Send</button>
+
+      </div> <!-- end chat-message -->
+      
+    </div> <!-- end chat -->
+    
+  </div> <!-- end container -->
+
+<script id="message-template" type="text/x-handlebars-template">
+  <li class="clearfix">
+    <div class="message-data align-right">
+      <span class="message-data-time" >{{time}}, Today</span> &nbsp; &nbsp;
+      <span class="message-data-name" ></span> <i class="fa fa-circle me"></i>
+    </div>
+    <div class="message other-message float-right">
+      {{messageOutput}}
+    </div>
+  </li>
+</script>
+
+<script id="message-response-template" type="text/x-handlebars-template">
+  <li>
+    <div class="message-data">
+      <span class="message-data-name"><i class="fa fa-circle online"></i> Bot</span>
+      <span class="message-data-time">{{time}}, Today</span>
+    </div>
+    <div class="message my-message">
+      {{response}}
+    </div>
+  </li>
+</script>
+    <script type="text/javascript" src="./assets/js/chat.js"></script>
+</div>
+  </body>
+</html>

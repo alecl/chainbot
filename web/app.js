@@ -14,11 +14,7 @@ require("dotenv").config();
 const app = express();
 const port = 3000;
 
-var staticOptions = {
-  index: "authorize.html",
-};
-
-app.use(express.static("public", staticOptions));
+app.use(express.static("public"));
 
 // app.use(
 //   cors({
@@ -34,9 +30,9 @@ app.get("/auth", async (req, res) => {
   const authorizationTarget = req.query.authorizationTarget;
   const chainBotContractAddress = authorizationTarget.split("_")[0];
   const chainBotTokenId = authorizationTarget.split("_")[1];
+  const chainBotName = authorizationTarget.split("_")[2];
   const ethSigUtil = require("eth-sig-util");
 
-  // pass in the address
   msgBufferHex = Buffer.from(authorizationTarget, "utf8");
 
   const msgParams = {
@@ -54,6 +50,7 @@ app.get("/auth", async (req, res) => {
     typ: "Bearer",
     contract_address: chainBotContractAddress,
     token_id: chainBotTokenId,
+    bot_name: chainBotName
   };
 
   let accessTokenRet = await signAsync(oAuth2Token, process.env.JWT_SECRET, {
@@ -78,16 +75,6 @@ app.post(
     const botTalkUrl = process.env.BOT_TALK_URL;
     const sessionId = req.user.jti;
 
-    // axios.interceptors.request.use((request) => {
-    //   console.log("Starting Request", JSON.stringify(request, null, 2));
-    //   return request;
-    // });
-
-    // axios.interceptors.response.use((response) => {
-    //   console.log("Response:", JSON.stringify(response, null, 2));
-    //   return response;
-    // });
-
     axios
       .post(botTalkUrl, null, {
         headers: {
@@ -101,20 +88,12 @@ app.post(
         },
       })
       .then((response) => {
-        //         {
-        //     "status": "ok",
-        //     "responses": [
-        //         "The [vb] YOX lives..."
-        //     ],
-        //     "sessionid": 8170624
-        // }
         if (response.status === 200 && response.data.status === "ok") {
           return res.json(response.data);
         } else {
           console.warn(JSON.stringify(response));
           return res.json(response.data);
         }
-        //response.status
       })
       .catch((err) => {
         console.warn(err);

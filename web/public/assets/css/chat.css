@@ -4,15 +4,16 @@
 	box-sizing: border-box;
 }
 
-body {
+UL {
+    list-style: none;
+}
+
+.chatinterface {
+	display: none;
 	background: #C5DDEB;
 	font: 14px/20px "Lato", Arial, sans-serif;
 	padding: 40px 0;
 	color: white;
-}
-
-UL {
-    list-style: none;
 }
 
 .container {

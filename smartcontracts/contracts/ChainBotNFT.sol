@@ -2,12 +2,10 @@
 pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-//import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "base64-sol/base64.sol";
 
-//contract ChainBotNFT is ERC721URIStorage, Ownable {
 contract ChainBotNFT is ERC721URIStorage, Ownable {
     struct BotInfo {
         address creator;
@@ -16,25 +14,12 @@ contract ChainBotNFT is ERC721URIStorage, Ownable {
         uint256 freezeExpiry;
     }
 
-    // Waiting until blockchain transaction is complete to
-    // create a sessionId is a serious delay to conversation
-    // and makes no sense
-    // TODO: Maybe create sessionId externally and store it?
-    // use-case verified wallet address of chatbot hoster (which is not owner??)
-    // still doesn't make sense
-    mapping(address => uint256[]) conversationSessions;
-    mapping(string => address) sessionIdToBotUser;
-
-    // TODO: add init parameter to constructor
     string public authUri;
 
     uint256 public tokenCounter;
 
     // 1 week + a minute buffer
     uint256 public maxFreezeExpirySeconds = (60 * 60 * 24 * 7) + 300;
-
-    // 24 hours
-    uint256 public sessionLength = 60 * 60 * 24;
 
     BotInfo[] public bots;
 
